@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctoral Despotism</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        #game-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        h1 {
+            margin: 0;
+            color: #8b0000;
+        }
+        .title-progress {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #title {
+            font-weight: bold;
+            color: #8b0000;
+        }
+        progress {
+            width: 150px;
+            height: 15px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .info-section {
+            background-color: #f8f8f8;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        .info-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .icon {
+            font-size: 20px;
+            margin-right: 10px;
+        }
+        #actions, #upgrades, #purchased-upgrades {
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+            position: relative;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #message-log {
+            height: 100px;
+            overflow-y: scroll;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        .tooltip {
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+        button:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        .resource-change {
+            font-weight: bold;
+        }
+        .positive {
+            color: green;
+        }
+        .negative {
+            color: red;
+        }
+        #upgrades {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div class="header">
+            <h1>Doctoral Despotism</h1>
+            <div class="title-progress">
+                <span id="title">Aspirant Exploiteur</span>
+                <progress id="title-progress" value="0" max="100"></progress>
+            </div>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-section">
+                <div class="info-item">
+                    <span class="icon">🧠</span>
+                    <span>Santé mentale: <span id="mental-health">100</span></span>
+                </div>
+                <div class="info-item">
+                    <span class="icon">☕</span>
+                    <span>Café: <span id="coffee">10</span></span>
+                </div>
+            </div>
+            <div class="info-section">
+                <div class="info-item">
+                    <span class="icon">😴</span>
+                    <span>Sommeil: <span id="sleep">8</span></span>
+                </div>
+                <div class="info-item">
+                    <span class="icon">😢</span>
+                    <span>Larmes: <span id="tears">0</span></span>
+                </div>
+            </div>
+            <div class="info-section">
+                <div class="info-item">
+                    <span class="icon">📚</span>
+                    <span>Publications: <span id="publication-points">0</span></span>
+                </div>
+                <div class="info-item">
+                    <span class="icon">🏆</span>
+                    <span>Prestige: <span id="prestige">0</span></span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="actions">
+            <button onclick="action('work')" id="work-button">Faire Travailler
+                <span class="tooltip">Forcez vos doctorants à travailler jusqu'à l'épuisement.</span>
+            </button>
+            <button onclick="action('coffee')">Distribuer le Café
+                <span class="tooltip">Un boost de caféine pour maintenir vos doctorants éveillés et productifs.</span>
+            </button>
+            <button onclick="action('allNighter')">Organiser une Nuit blanche
+                <span class="tooltip">Qui a besoin de dormir quand on peut rédiger toute la nuit ?</span>
+            </button>
+        </div>
+        
+        <h3>Améliorations disponibles :</h3>
+        <div id="upgrades"></div>
+        
+        <h3>Améliorations achetées :</h3>
+        <div id="purchased-upgrades"></div>
+        
+        <div id="message-log"></div>
+    </div>
+
+    <script>
+        let game = {
+            mentalHealth: 100,
+            coffee: 10,
+            sleep: 8,
+            tears: 0,
+            publicationPoints: 0,
+            prestige: 0,
+            upgrades: {},
+            purchasedUpgrades: [],
+            titleLevel: 0,
+            titleProgress: 0
+        };
+
+        const TITLES = [
+            "Aspirant Exploiteur",
+            "Maître de la Procrastination",
+            "Docteur ès Tourments",
+            "Professeur de Pression",
+            "Doyen des Désespoirs",
+            "Recteur Impitoyable",
+            "Grand Tyran Académique"
+        ];
+
+        const UPGRADES = [
+            {
+                id: "coffee1",
+                name: "Machine à café basique",
+                cost: 50,
+                costResource: "tears",
+                effect: { coffee: 0.1 },
+                description: "Une vieille machine à café qui produit un liquide noir suspect.",
+                unlocks: ["coffee2", "surveillance1"]
+            },
+            {
+                id: "coffee2",
+                name: "Machine à café avancée",
+                cost: 150,
+                costResource: "tears",
+                effect: { coffee: 0.2 },
+                description: "Une machine à café dernier cri. Vos doctorants n'ont jamais été aussi éveillés !",
+                unlocks: ["coffee3"]
+            },
+            {
+                id: "coffee3",
+                name: "Station café futuriste",
+                cost: 300,
+                costResource: "tears",
+                effect: { coffee: 0.3 },
+                description: "Une station café complète avec barista robotisé. Le sommeil est désormais obsolète.",
+                unlocks: []
+            },
+            {
+                id: "surveillance1",
+                name: "Caméras de surveillance",
+                cost: 100,
+                costResource: "tears",
+                effect: { publicationPoints: 0.1 },
+                description: "Des caméras pour surveiller vos doctorants 24/7. Big Brother serait fier.",
+                unlocks: ["surveillance2", "motivation1"]
+            },
+            {
+                id: "surveillance2",
+                name: "Système de surveillance avancé",
+                cost: 250,
+                costResource: "tears",
+                effect: { publicationPoints: 0.2 },
+                description: "Un système de surveillance high-tech. Même leurs pensées n'échapperont pas à votre contrôle.",
+                unlocks: ["surveillance3"]
+            },
+            {
+                id: "surveillance3",
+                name: "IA de surveillance omnisciente",
+                cost: 500,
+                costResource: "tears",
+                effect: { publicationPoints: 0.3 },
+                description: "Une IA qui prédit les mouvements de vos doctorants avant même qu'ils n'y pensent.",
+                unlocks: []
+            },
+            {
+                id: "motivation1",
+                name: "Affiches motivantes",
+                cost: 200,
+                costResource: "tears",
+                effect: { mentalHealth: -0.1, publicationPoints: 0.1 },
+                description: "Des affiches avec des slogans comme 'Le sommeil est pour les faibles' ornent les murs.",
+                unlocks: ["motivation2", "efficiency1"]
+            },
+            {
+                id: "motivation2",
+                name: "Séminaires de 'motivation'",
+                cost: 400,
+                costResource: "tears",
+                effect: { mentalHealth: -0.2, publicationPoints: 0.2 },
+                description: "Des séminaires obligatoires pour booster la 'motivation'. Le lavage de cerveau n'a jamais été aussi efficace.",
+                unlocks: ["motivation3"]
+            },
+            {
+                id: "motivation3",
+                name: "Programme de conditionnement",
+                cost: 800,
+                costResource: "tears",
+                effect: { mentalHealth: -0.3, publicationPoints: 0.3 },
+                description: "Un programme complet pour transformer vos doctorants en machines à publier.",
+                unlocks: []
+            },
+            {
+                id: "efficiency1",
+                name: "Logiciel de gestion du temps",
+                cost: 300,
+                costResource: "tears",
+                effect: { sleep: -0.1, publicationPoints: 0.1 },
+                description: "Un logiciel qui optimise chaque seconde de la journée de vos doctorants.",
+                unlocks: ["efficiency2", "prestige1"]
+            },
+            {
+                id: "efficiency2",
+                name: "Algorithme d'optimisation du sommeil",
+                cost: 600,
+                costResource: "tears",
+                effect: { sleep: -0.2, publicationPoints: 0.2 },
+                description: "Un algorithme qui calcule le minimum absolu de sommeil nécessaire. Le repos est pour les faibles.",
+                unlocks: ["efficiency3"]
+            },
+            {
+                id: "efficiency3",
+                name: "Suppression du sommeil",
+                cost: 1200,
+                costResource: "tears",
+                effect: { sleep: -0.3, publicationPoints: 0.3 },
+                description: "Qui a besoin de dormir quand on peut travailler 24/7 ?",
+                unlocks: []
+            },
+            {
+                id: "prestige1",
+                name: "Blog académique",
+                cost: 500,
+                costResource: "publicationPoints",
+                effect: { prestige: 0.1 },
+                description: "Un blog pour vanter vos méthodes 'innovantes'. L'éthique, c'est tellement surfait.",
+                unlocks: ["prestige2"]
+            },
+            {
+                id: "prestige2",
+                name: "Conférences internationales",
+                cost: 1000,
+                costResource: "publicationPoints",
+                effect: { prestige: 0.2 },
+                description: "Présentez vos méthodes d'exploitation au monde entier. L'important c'est le résultat, pas vrai ?",
+                unlocks: ["prestige3"]
+            },
+            {
+                id: "prestige3",
+                name: "Prix Nobel de l'exploitation",
+                cost: 2000,
+                costResource: "publicationPoints",
+                effect: { prestige: 0.3 },
+                description: "Le summum de la reconnaissance académique. Vos doctorants sont peut-être brisés, mais votre h-index est magnifique !",
+                unlocks: []
+            }
+        ];
+
+        function initializeUpgrades() {
+            game.upgrades = UPGRADES.reduce((acc, upgrade) => {
+                acc[upgrade.id] = { ...upgrade, unlocked: upgrade.id === "coffee1" };
+                return acc;
+            }, {});
+        }
+
+        function updateDisplay() {
+            document.getElementById('mental-health').textContent = game.mentalHealth.toFixed(1);
+            document.getElementById('coffee').textContent = game.coffee.toFixed(1);
+            document.getElementById('sleep').textContent = game.sleep.toFixed(1);
+            document.getElementById('tears').textContent = game.tears.toFixed(0);
+            document.getElementById('publication-points').textContent = game.publicationPoints.toFixed(0);
+            document.getElementById('prestige').textContent = game.prestige.toFixed(0);
+            document.getElementById('title').textContent = TITLES[game.titleLevel];
+            document.getElementById('title-progress').value = game.titleProgress;
+
+            updateUpgradesDisplay();
+            updatePurchasedUpgradesDisplay();
+            updateActionButtons();
+        }
+
+        function updateUpgradesDisplay() {
+            const upgradesContainer = document.getElementById('upgrades');
+            upgradesContainer.innerHTML = '';
+            for (const [id, upgrade] of Object.entries(game.upgrades)) {
+                if (upgrade.unlocked && !game.purchasedUpgrades.includes(id)) {
+                    const button = document.createElement('button');
+                    button.textContent = `${upgrade.name}`;
+                    button.onclick = () => buyUpgrade(id);
+                    button.disabled = game[upgrade.costResource] < upgrade.cost;
+                    
+                    const tooltip = document.createElement('span');
+                    tooltip.className = 'tooltip';
+                    tooltip.textContent = `${upgrade.description} Coût: ${upgrade.cost} ${upgrade.costResource}`;
+                    
+                    button.appendChild(tooltip);
+                    upgradesContainer.appendChild(button);
+                }
+            }
+        }
+        function updatePurchasedUpgradesDisplay() {
+            const purchasedUpgradesContainer = document.getElementById('purchased-upgrades');
+            purchasedUpgradesContainer.innerHTML = '';
+            for (const id of game.purchasedUpgrades) {
+                const upgrade = game.upgrades[id];
+                const div = document.createElement('div');
+                div.textContent = `${upgrade.name}: `;
+                for (const [key, value] of Object.entries(upgrade.effect)) {
+                    let effectText = '';
+                    switch(key) {
+                        case 'coffee':
+                            effectText = `Produit ${Math.round(value * 60)} tasses de café par minute`;
+                            break;
+                        case 'publicationPoints':
+                            effectText = `Génère ${Math.round(value * 60)} points de publication par minute`;
+                            break;
+                        case 'mentalHealth':
+                            effectText = value > 0 ? `Améliore la santé mentale de ${Math.abs(Math.round(value * 60))} par minute` :
+                                                    `Détériore la santé mentale de ${Math.abs(Math.round(value * 60))} par minute`;
+                            break;
+                        case 'sleep':
+                            effectText = `Réduit le sommeil de ${Math.abs(Math.round(value * 60))} minutes par heure`;
+                            break;
+                        case 'prestige':
+                            effectText = `Augmente le prestige de ${Math.round(value * 60)} par minute`;
+                            break;
+                        default:
+                            effectText = `${key} ${value > 0 ? '+' : ''}${Math.round(value * 60)} par minute`;
+                    }
+                    div.textContent += effectText + '. ';
+                }
+                purchasedUpgradesContainer.appendChild(div);
+            }
+        }
+        function updateActionButtons() {
+            document.getElementById('work-button').disabled = game.coffee < 1;
+        }
+
+        function addMessage(message) {
+            const messageLog = document.getElementById('message-log');
+            messageLog.innerHTML = `<p>${message}</p>` + messageLog.innerHTML;
+            messageLog.scrollTop = 0;
+        }
+
+        function formatChange(value) {
+            if (value > 0) return `<span class="resource-change positive">+${value}</span>`;
+            if (value < 0) return `<span class="resource-change negative">${value}</span>`;
+            return '';
+        }
+
+        function action(type) {
+            let changes = {};
+            switch(type) {
+                case 'work':
+                    if (game.coffee < 1) {
+                        addMessage("Pas assez de café pour faire travailler les doctorants !");
+                        return;
+                    }
+                    changes = {
+                        mentalHealth: -5,
+                        coffee: -1,
+                        sleep: -0.5,
+                        tears: 2,
+                        publicationPoints: 1,
+                        prestige: 0.1
+                    };
+                    break;
+                case 'coffee':
+                    if (game.coffee >= 2) {
+                        changes = {
+                            coffee: -2,
+                            mentalHealth: 3,
+                            sleep: -0.5
+                        };
+                    } else {
+                        addMessage("Pas assez de café disponible!");
+                        return;
+                    }
+                    break;
+                case 'allNighter':
+                    changes = {
+                        mentalHealth: -10,
+                        sleep: -4,
+                        tears: 5,
+                        publicationPoints: 3,
+                        prestige: 0.5
+                    };
+                    break;
+            }
+            
+            applyChanges(changes);
+            
+            let message = `${type === 'work' ? 'Travail forcé' : type === 'coffee' ? 'Distribution de café' : 'Nuit blanche'} ! `;
+            message += Object.entries(changes).map(([key, value]) => `${key}: ${formatChange(value)}`).join(', ');
+            addMessage(message);
+
+            updateTitle();
+            checkVictory();
+            updateDisplay();
+        }
+
+        function buyUpgrade(id) {
+            const upgrade = game.upgrades[id];
+            if (game[upgrade.costResource] >= upgrade.cost) {
+                game[upgrade.costResource] -= upgrade.cost;
+                game.purchasedUpgrades.push(id);
+                
+                let message = `Amélioration achetée : ${upgrade.name} ! `;
+                for (const [key, value] of Object.entries(upgrade.effect)) {
+                    message += `${key}: ${formatChange(value)}/s, `;
+                }
+                addMessage(message.slice(0, -2));  // Enlève la dernière virgule et espace
+
+                // Débloquer de nouvelles améliorations
+                upgrade.unlocks.forEach(unlockId => {
+                    if (game.upgrades[unlockId]) {
+                        game.upgrades[unlockId].unlocked = true;
+                    }
+                });
+
+                updateDisplay();
+            }
+        }
+
+        function applyChanges(changes) {
+            for (let [key, value] of Object.entries(changes)) {
+                game[key] += value;
+            }
+            if (game.mentalHealth < 0) game.mentalHealth = 0;
+            if (game.mentalHealth > 100) game.mentalHealth = 100;
+            if (game.sleep < 0) game.sleep = 0;
+            if (game.sleep > 8) game.sleep = 8;
+        }
+
+        function updateTitle() {
+            game.titleProgress += game.prestige * 0.1;
+            if (game.titleProgress >= 100 && game.titleLevel < TITLES.length - 1) {
+                game.titleLevel++;
+                game.titleProgress = 0;
+                addMessage(`Félicitations ! Vous avez obtenu le titre de ${TITLES[game.titleLevel]}!`);
+            }
+        }
+
+        function checkVictory() {
+            if (game.titleLevel === TITLES.length - 1 && game.publicationPoints >= 1000) {
+                alert("Victoire ! Vous êtes devenu le tyran académique ultime. Vos doctorants sont brisés, mais votre h-index est magnifique !");
+            }
+        }
+
+        function gameLoop() {
+            // Appliquer les effets des améliorations
+            let changes = {
+                coffee: 0.1,
+                sleep: 0.1,
+                mentalHealth: 0.1,
+                prestige: game.publicationPoints * 0.001
+            };
+
+            for (const id of game.purchasedUpgrades) {
+                const upgrade = game.upgrades[id];
+                for (const [key, value] of Object.entries(upgrade.effect)) {
+                    changes[key] = (changes[key] || 0) + value;
+                }
+            }
+
+            applyChanges(changes);
+            updateDisplay();
+        }
+
+        function initGame() {
+            initializeUpgrades();
+            updateDisplay();
+            setInterval(gameLoop, 1000);
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
